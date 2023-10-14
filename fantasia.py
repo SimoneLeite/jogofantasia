@@ -3,15 +3,24 @@ from sys import exit
 from random import randint, choice
 
 def animacao_personagem():
-    global jogador_index, jogador_retangulo, movimento_personagem, direcao_personagem
-    jogador_retangulo.x += movimento_personagem
+    global jogador_index, jogador_retangulo, movimento_x_personagem, direcao_personagem, movimento_y_personagem
+
+    # Atualize a posição vertical do jogador com base nas teclas pressionadas
+    jogador_retangulo.x += movimento_x_personagem
+    jogador_retangulo.y += movimento_y_personagem
 
     if jogador_retangulo.right >= 960:
         jogador_retangulo.right = 960
     elif jogador_retangulo.left <= 0:
         jogador_retangulo.left = 0
 
-    if movimento_personagem == 0:  # Jogador está parado
+    # Verifique se o jogador não ultrapassa os limites superior e inferior da tela
+    if jogador_retangulo.top < 0:
+        jogador_retangulo.top = 0
+    elif jogador_retangulo.bottom > 540:  # Ajuste este valor de acordo com a altura da tela
+        jogador_retangulo.bottom = 540
+
+    if movimento_x_personagem == 0:  # Jogador está parado
         jogador_superficies = jogador_parado_superficie
     else:  # Jogador está se movimentando
         jogador_superficies = jogador_andando_superficie
@@ -30,7 +39,7 @@ def animacao_personagem():
 def adicionar_objeto():
     global lista_monstro_objetos
 
-    objeto_lista_aleatoria = ['lobo'] * 20 + ['lobo_branco'] * 10 + ['wolf'] * 20 + ['coracao'] * 20
+    objeto_lista_aleatoria = ['lobo'] * 30 + ['lobo_branco'] * 30 + ['wolf'] * 30 + ['coracao'] * 10
     tipo_objeto = choice(objeto_lista_aleatoria)
 
     # Define as posições para que os objetos apareçam fora da tela pela direita
@@ -87,73 +96,73 @@ def movimento_objetos_direita():
         lista_monstro_objetos.remove(objeto)
 
 def colisoes_jogador():
-    global lobo_colisao, lobo_branco_colisao, wolf_colisao, fogo_colisao,coracao_colisao
+    global lobo_colisao, lobo_branco_colisao, wolf_colisao, fogo_colisao, coracao_colisao, vida_jogador
 
     for objeto in lista_monstro_objetos:
         if jogador_retangulo.colliderect(objeto['rect']):
             if objeto['tipo'] == 'lobo':
                 lobo_colisao += 1
+                if vida_jogador > 0:
+                    vida_jogador -= 1  # Reduza uma vida do jogador se ele tiver mais de 0 vidas
+                if vida_jogador <= 0:
+                    # O jogador não tem mais vidas, você pode adicionar a lógica de game over aqui
+                    print("Game Over")
             elif objeto['tipo'] == 'lobo_branco':
                 lobo_branco_colisao += 1
+                if vida_jogador > 0:
+                    vida_jogador -= 1  # Reduza uma vida do jogador se ele tiver mais de 0 vidas
+                if vida_jogador <= 0:
+                    print("Game Over")
             elif objeto['tipo'] == 'wolf':
                 wolf_colisao += 1
             elif objeto['tipo'] == 'fogo':
                 fogo_colisao += 1
+            elif objeto['tipo'] == 'coracao':
+                coracao_colisao += 1
+                vida_jogador += 1
 
             lista_monstro_objetos.remove(objeto)
 
 def movimento_fogo():
-    global lista_monstro_objetos
-            # Adicione o código para lidar com colisões do fogo com outros objetos
+    global lista_fogo_objetos, fogo_rect
+
+    # Adicione o código para lidar com colisões do fogo com outros objetos
     objetos_a_remover = []
 
-    for fogo in lista_monstro_objetos:
+    for fogo in lista_fogo_objetos:
         if fogo['tipo'] == 'fogo':
-            fogo['rect'].y -= fogo['velocidade']
+            fogo['rect'].x += fogo['velocidade']
 
-            for objeto in lista_monstro_objetos:
-                if objeto != fogo and fogo['rect'].colliderect(objeto['rect']):
-                    if objeto['tipo'] == 'lobo':
-                        lobo_colisao += 1
-                    elif objeto['tipo'] == 'lobo_branco':
-                        lobo_branco_colisao += 1
-                    elif objeto['tipo'] == 'wolf':
-                        wolf_colisao += 1
-                    elif objeto['tipo'] == 'coracao':
-                        coracao_colisao += 1
-                    elif objeto['tipo'] == 'fogo':
-                        pass  # Não faça nada se o fogo colidir com outro fogo
+            for monstro in lista_monstro_objetos:
+                if fogo['rect'].colliderect(monstro['rect']):
+                    print("MaTEI")
 
-                    objetos_a_remover.append(fogo)
+            tela.blit(fogo_superficies[fogo_index], fogo['rect'])
 
-            if fogo['rect'].top < 0 or fogo['tempo_de_vida'] <= 0:
-                objetos_a_remover.append(fogo)
-
-    for objeto in objetos_a_remover:
-        lista_monstro_objetos.remove(objeto)
 
 def mostra_texto():
-    texto_coracoes = fonte_pixel.render(f"vida: {coracao_colisao}", True, '#FFFFFF')
+    texto_coracoes = fonte_pixel.render(f"vida: {vida_jogador}", True, '#FFFFFF')
     logo_coracoes = pygame.transform.scale(coracao_superficies[0],(40,40))
 
     tela.blit(texto_coracoes,(885,10))
     tela.blit(logo_coracoes,(885,50))
 
-def disparar_fogo():
+def disparar_fogo(): 
 
-    global lista_monstro_objetos, jogador_retangulo
+    global lista_fogo_objetos, jogador_retangulo
 
-    fogo_rect = fogo_superficies[0].get_rect(midbottom=jogador_retangulo.midtop)
+    fogo_rect = fogo_superficies[0].get_rect(center=jogador_retangulo.midright)
     velocidade_fogo = 10
 
-    lista_monstro_objetos.append({
-    'tipo': 'fogo',
-    'rect': fogo_rect,
-    'velocidade': velocidade_fogo,
-    'dano': 10,  # Exemplo de dano causado
-    'cor': (0, 255, 0),  # Exemplo de cor do fogo (verde)
-    'tempo_de_vida': 60
-})
+    lista_fogo_objetos.append({
+        'tipo': 'fogo',
+        'rect': fogo_rect,
+        'velocidade': velocidade_fogo,
+        'dano': 10,  # Exemplo de dano causado
+        'cor': (0, 255, 0),  # Exemplo de cor do fogo (verde)
+        'tempo_de_vida': 60
+    })
+    
 
 ##
 # INICIO
@@ -225,24 +234,27 @@ coracao_superficies = []
 coracao_index = 0
 for imagem in range(1, 4):
     img =  pygame.image.load(f'objeto/coracao/Heart{imagem}.png').convert_alpha() 
-    img = pygame.transform.scale(img, (80, 80))
+    img = pygame.transform.scale(img, (40, 40))
     coracao_superficies.append(img)
 
 fogo_superficies = []
 fogo_index = 0
 for image in range(1, 5):
     img = pygame.image.load(f'objeto/fogo/fogo_verde{image}.png').convert_alpha()
-    img = pygame.transform.scale(img, (40, 40))
+    img = pygame.transform.scale(img, (80, 80))
     fogo_superficies.append(img)
 
 jogador_retangulo = jogador_parado_superficie[jogador_index].get_rect(center=(100, 430))
 
 lista_monstro_objetos = []
+lista_fogo_objetos = []
 
 relogio = pygame.time.Clock()
 
-movimento_personagem = 0
+movimento_x_personagem = 0
+movimento_y_personagem = 0
 direcao_personagem = 0
+vida_jogador = 3
 
 novo_objeto_time = pygame.USEREVENT + 1
 pygame.time.set_timer(novo_objeto_time, 500)
@@ -264,21 +276,30 @@ while jogo_ativo:
 
         if evento.type == pygame.KEYDOWN:
             if evento.key == pygame.K_RIGHT:
-                movimento_personagem = 5
+                movimento_x_personagem = 5
                 direcao_personagem = 0
             if evento.key == pygame.K_LEFT:
-                movimento_personagem = -5
+                movimento_x_personagem = -5
                 direcao_personagem = 1
+            if evento.key == pygame.K_UP:
+                movimento_y_personagem = -5
+            if evento.key == pygame.K_DOWN:
+                movimento_y_personagem = 5
 
             # Dispara o fogo ao pressionar a tecla Enter
-            if evento.key == pygame.K_RETURN:
+            if evento.key == pygame.K_SPACE:
+                # movimento_fogo()
                 disparar_fogo()
 
         if evento.type == pygame.KEYUP:
             if evento.key == pygame.K_RIGHT:
-                movimento_personagem = 0
+                movimento_x_personagem = 0
             if evento.key == pygame.K_LEFT:
-                movimento_personagem = 0
+                movimento_x_personagem = 0
+            if evento.key == pygame.K_UP:
+                movimento_y_personagem = 0
+            if evento.key == pygame.K_DOWN:
+                movimento_y_personagem = 0
 
         if evento.type == novo_objeto_time:
             adicionar_objeto()
@@ -291,6 +312,7 @@ while jogo_ativo:
 
     animacao_personagem()
     movimento_objetos_direita()
+    movimento_fogo()
     colisoes_jogador()
     mostra_texto()
 
@@ -298,3 +320,4 @@ while jogo_ativo:
     pygame.display.update()
 
     relogio.tick(60)
+
